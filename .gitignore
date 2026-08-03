@@ -1,0 +1,14 @@
+# Dependency directories
+node_modules/
+
+# Baileys WhatsApp Session (SANGAT PENTING DITOLAK!)
+# Jangan pernah mengupload folder ini agar sesi WA Anda tidak dicuri/bermasalah
+sesi_bot_wa/
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables (Jika nanti Anda pakai file .env)
+.env
