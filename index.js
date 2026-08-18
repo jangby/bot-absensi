@@ -99,7 +99,7 @@ async function startBot() {
             try {
                 // KIRIM DATA KE OTAK PHP (Ganti dengan Domain / IP Web Hostinger Anda)
                 // Contoh: 'https://domainanda.com/api_webhook.php'
-                const response = await fetch('http://<GANTI_DENGAN_URL_WEB_ANDA>/api_webhook.php', {
+                const response = await fetch('https://kas.jagokas.online/api_webhook.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
