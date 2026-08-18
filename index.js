@@ -67,15 +67,26 @@ async function startBot() {
         }
     });
 
-    // -----------------------------------------------------
-    // LOGIKA MEMBACA PESAN MASUK (VERIFIKASI AKUN)
-    // -----------------------------------------------------
     sock.ev.on('messages.upsert', async m => {
         const msg = m.messages[0];
         // Jangan respon status WA atau pesan dari diri sendiri
         if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') return;
 
-        const senderNumber = msg.key.remoteJid.split('@')[0];
+        // ==========================================
+        // 🔍 DEBUGGING & PEMBERSIHAN NOMOR WA
+        // ==========================================
+        console.log("\n[🔍 DETEKTIF WA]");
+        console.log("-> remoteJid Asli :", msg.key.remoteJid);
+        if (msg.key.participant) console.log("-> Participant Asli :", msg.key.participant);
+
+        // Ambil JID yang paling akurat (Kadang remoteJid berisi ID Grup, participant berisi pengirim)
+        let rawJid = msg.key.participant || msg.key.remoteJid;
+        
+        // Hapus @s.whatsapp.net DAN hapus ID Perangkat (contoh :15)
+        let senderNumber = rawJid.split('@')[0].split(':')[0]; 
+
+        console.log("-> Nomor Bersih yang dikirim ke PHP :", senderNumber);
+        // ==========================================
         
         // Ambil teks pesan (mendukung pesan biasa maupun pesan reply/extended)
         const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
@@ -93,17 +104,19 @@ async function startBot() {
             const nominal = match[2];
             const catatan = match[3];
 
+            console.log(`[INFO] Menangkap Perintah: ${tipe} | Rp ${nominal} | ${catatan}`);
+
             // Kirim notifikasi sedang mengetik...
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             try {
-                // KIRIM DATA KE OTAK PHP (Ganti dengan Domain / IP Web Hostinger Anda)
-                // Contoh: 'https://domainanda.com/api_webhook.php'
+                // KIRIM DATA KE OTAK PHP
+                // PASTIKAN URL INI SUDAH BENAR KE HOSTINGER ANDA
                 const response = await fetch('https://kas.jagokas.online/api_webhook.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        phone: senderNumber,
+                        phone: senderNumber, // Sekarang mengirim nomor yang sudah BERSIH
                         tipe: tipe,
                         nominal: nominal,
                         catatan: catatan
