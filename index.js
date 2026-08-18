@@ -94,45 +94,34 @@ async function startBot() {
         // ==========================================
         // FITUR SMART WA ASSISTANT (NLP SEDERHANA)
         // ==========================================
-        // Cek pola: "Keluar/Masuk [spasi] Angka [spasi] Catatan"
-        const regex = /^(keluar|masuk)\s+(\d+)\s+(.*)$/i;
-        const match = textMessage.match(regex);
+        const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+        const lowerText = textMessage.toLowerCase();
 
-        if (match) {
-            const tipeStr = match[1].toLowerCase();
-            const tipe = tipeStr === 'keluar' ? 'Pengeluaran' : 'Pemasukan';
-            const nominal = match[2];
-            const catatan = match[3];
-
-            console.log(`[INFO] Menangkap Perintah: ${tipe} | Rp ${nominal} | ${catatan}`);
-
-            // Kirim notifikasi sedang mengetik...
+        // Hanya proses jika diawali kata kunci yang benar
+        if (lowerText.startsWith('keluar ') || lowerText.startsWith('masuk ') || lowerText.startsWith('tautkan ')) {
+            
+            console.log(`[INFO] Mengirim ke PHP: ${textMessage}`);
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             try {
-                // KIRIM DATA KE OTAK PHP
-                // PASTIKAN URL INI SUDAH BENAR KE HOSTINGER ANDA
+                // PASTIKAN URL INI SUDAH BENAR
                 const response = await fetch('https://kas.jagokas.online/api_webhook.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        phone: senderNumber, // Sekarang mengirim nomor yang sudah BERSIH
-                        tipe: tipe,
-                        nominal: nominal,
-                        catatan: catatan
+                        phone: senderNumber, // Ini akan berisi 628... atau 173... (LID)
+                        pesan_lengkap: textMessage
                     })
                 });
 
                 const jsonResponse = await response.json();
                 
-                // Balas pesan ke WhatsApp pengguna
                 if (jsonResponse.reply) {
                     await sock.sendMessage(msg.key.remoteJid, { text: jsonResponse.reply });
                 }
 
             } catch (error) {
                 console.error("[ERROR Webhook] ", error);
-                await sock.sendMessage(msg.key.remoteJid, { text: "❌ Maaf, server KeuanganKu sedang gangguan. Tidak bisa mencatat saat ini." });
             }
         }
     });
