@@ -72,32 +72,54 @@ async function startBot() {
     // -----------------------------------------------------
     sock.ev.on('messages.upsert', async m => {
         const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
+        // Jangan respon status WA atau pesan dari diri sendiri
+        if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') return;
 
-        const sender = msg.key.remoteJid; 
+        const senderNumber = msg.key.remoteJid.split('@')[0];
+        
+        // Ambil teks pesan (mendukung pesan biasa maupun pesan reply/extended)
         const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+        
+        // ==========================================
+        // FITUR SMART WA ASSISTANT (NLP SEDERHANA)
+        // ==========================================
+        // Cek pola: "Keluar/Masuk [spasi] Angka [spasi] Catatan"
+        const regex = /^(keluar|masuk)\s+(\d+)\s+(.*)$/i;
+        const match = textMessage.match(regex);
 
-        const matchToken = textMessage.match(/LINK-AKUN-(\d+)/);
+        if (match) {
+            const tipeStr = match[1].toLowerCase();
+            const tipe = tipeStr === 'keluar' ? 'Pengeluaran' : 'Pemasukan';
+            const nominal = match[2];
+            const catatan = match[3];
 
-        if (matchToken) {
-            const guru_id = matchToken[1]; 
+            // Kirim notifikasi sedang mengetik...
+            await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             try {
-                const [result] = await pool.query("UPDATE gurus SET no_hp = ? WHERE id = ?", [sender, guru_id]);
+                // KIRIM DATA KE OTAK PHP (Ganti dengan Domain / IP Web Hostinger Anda)
+                // Contoh: 'https://domainanda.com/api_webhook.php'
+                const response = await fetch('http://<GANTI_DENGAN_URL_WEB_ANDA>/api_webhook.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: senderNumber,
+                        tipe: tipe,
+                        nominal: nominal,
+                        catatan: catatan
+                    })
+                });
 
-                if (result.affectedRows > 0) {
-                    const [rows] = await pool.query("SELECT nama FROM gurus WHERE id = ?", [guru_id]);
-                    const nama_guru = rows[0].nama;
-
-                    await sock.sendMessage(sender, { 
-                        text: `✅ *VERIFIKASI BERHASIL!*\n\nNomor ini telah resmi tertaut dengan akun Bapak/Ibu *${nama_guru}*.\n\nMulai sekarang, notifikasi kehadiran akan dikirim ke nomor ini.` 
-                    });
-                    console.log(`[SUKSES] Menautkan WA ke Guru ID ${guru_id}`);
-                } else {
-                    await sock.sendMessage(sender, { text: `❌ *GAGAL!* ID Akun tidak ditemukan.` });
+                const jsonResponse = await response.json();
+                
+                // Balas pesan ke WhatsApp pengguna
+                if (jsonResponse.reply) {
+                    await sock.sendMessage(msg.key.remoteJid, { text: jsonResponse.reply });
                 }
+
             } catch (error) {
-                console.error("Database error:", error);
+                console.error("[ERROR Webhook] ", error);
+                await sock.sendMessage(msg.key.remoteJid, { text: "❌ Maaf, server KeuanganKu sedang gangguan. Tidak bisa mencatat saat ini." });
             }
         }
     });
