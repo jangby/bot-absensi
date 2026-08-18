@@ -113,15 +113,25 @@ app.post('/kirim-wa', async (req, res) => {
         return res.status(400).json({ status: false, message: "Target dan pesan wajib diisi!" });
     }
 
-    // Cek apakah socket sudah terinisialisasi dan tersambung
     if (!sock) {
         return res.status(500).json({ status: false, message: "Bot belum siap, sedang memuat..." });
     }
 
     try {
+        // PENGECEKAN BARU: Pastikan nomor target benar-benar terdaftar di WA
+        const [wa_exists] = await sock.onWhatsApp(target);
+        
+        if (!wa_exists || !wa_exists.exists) {
+            console.log(`[API] ❌ Gagal: Nomor ${target} tidak terdaftar di WhatsApp.`);
+            return res.status(404).json({ status: false, message: "Nomor tidak terdaftar di WA" });
+        }
+
+        // Jika terdaftar, kirim pesannya
         await sock.sendMessage(target, { text: pesan });
-        console.log(`[API] Notifikasi terkirim ke: ${target.split('@')[0]}`);
+        console.log(`[API] ✅ Notifikasi terkirim ke: ${target.split('@')[0]}`);
+        
         res.json({ status: true, message: "Pesan berhasil dikirim" });
+
     } catch (error) {
         console.error("[API] Gagal mengirim pesan:", error.message);
         res.status(500).json({ status: false, message: "Gagal mengirim pesan" });
