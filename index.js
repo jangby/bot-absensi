@@ -88,9 +88,6 @@ async function startBot() {
         console.log("-> Nomor Bersih yang dikirim ke PHP :", senderNumber);
         // ==========================================
         
-        // Ambil teks pesan (mendukung pesan biasa maupun pesan reply/extended)
-        const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-        
         // ==========================================
         // FITUR SMART WA ASSISTANT (NLP SEDERHANA)
         // ==========================================
