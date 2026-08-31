@@ -24,7 +24,7 @@ async function startBot() {
     sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        browser: ['Bot KeuanganKu', 'Chrome', '1.0.0']
+        browser: ['Bot Absensi', 'Chrome', '1.0.0']
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -41,7 +41,6 @@ async function startBot() {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             if (statusCode !== DisconnectReason.loggedOut) {
                 console.log('[INFO] Koneksi terputus. Mematikan proses agar PM2 bisa merestart ulang dengan bersih...');
-                // PERBAIKAN: Gunakan process.exit(1) saat memakai PM2, JANGAN gunakan startBot()
                 process.exit(1); 
             } else {
                 console.log('[INFO] ❌ Sesi telah di-logout. Silakan hapus folder "sesi_bot_wa" lalu scan ulang.');
@@ -59,30 +58,29 @@ async function startBot() {
         if (!msg.message || msg.key.fromMe || msg.key.remoteJid === 'status@broadcast') return;
 
         // ==========================================
-        // 🔍 DEBUGGING & PEMBERSIHAN NOMOR WA
+        // 🔍 SIMPAN JID SECARA UTUH
         // ==========================================
-        let rawJid = msg.key.participant || msg.key.remoteJid;
+        // WhatsApp update terbaru sering menggunakan LID (173766...@lid) 
+        // Biarkan formatnya utuh beserta @lid atau @s.whatsapp.net nya
+        let senderJid = msg.key.participant || msg.key.remoteJid;
         
-        // Hapus @s.whatsapp.net DAN hapus ID Perangkat (LID)
-        let senderNumber = rawJid.split('@')[0].split(':')[0]; 
-        // ==========================================
-        
-        // PERBAIKAN: Deteksi pesan teks dari conversation, extended, atau caption gambar
         const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || "";
         const lowerText = textMessage.toLowerCase();
 
         // Deteksi jika pesan mengandung kode verifikasi
         if (lowerText.includes('link-akun-')) {
-            console.log(`[INFO] Permintaan menautkan akun dari ${senderNumber} -> Mengirim ke PHP...`);
+            console.log(`[INFO] Permintaan menautkan akun dari ${senderJid} -> Mengirim ke PHP...`);
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             try {
-                // GANTI DENGAN URL WEB HOSTINGER ANDA (Contoh: https://sekolah-anda.com/webhook.php)
-                const response = await fetch('https://sekolah.ponpesassaadah.com/webhook.php', {
+                // ==============================================================
+                // PENTING: GANTI DOMAIN DI BAWAH INI DENGAN WEB HOSTINGER ANDA
+                // ==============================================================
+                const response = await fetch('https://NAMA-DOMAIN-ANDA.com/webhook.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        phone: senderNumber, 
+                        phone: senderJid, // Kirim format utuh
                         pesan_lengkap: textMessage
                     })
                 });
@@ -116,15 +114,15 @@ app.post('/kirim-wa', async (req, res) => {
     }
 
     try {
-        const [wa_exists] = await sock.onWhatsApp(target);
-        
-        if (!wa_exists || !wa_exists.exists) {
-            console.log(`[API] ❌ Gagal: Nomor ${target} tidak terdaftar di WhatsApp.`);
-            return res.status(404).json({ status: false, message: "Nomor tidak terdaftar di WA" });
+        // JIKA TARGET BELUM PUNYA @lid ATAU @s.whatsapp.net, TAMBAHKAN MANUAL
+        let jid = target;
+        if (!jid.includes('@')) {
+            jid = jid + '@s.whatsapp.net';
         }
 
-        await sock.sendMessage(target, { text: pesan });
-        console.log(`[API] ✅ Notifikasi terkirim ke: ${target.split('@')[0]}`);
+        // LANGSUNG KIRIM PESAN TANPA onWhatsApp() AGAR UID/LID BISA LOLOS
+        await sock.sendMessage(jid, { text: pesan });
+        console.log(`[API] ✅ Notifikasi terkirim ke: ${jid}`);
         
         res.json({ status: true, message: "Pesan berhasil dikirim" });
 
