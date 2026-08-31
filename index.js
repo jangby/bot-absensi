@@ -76,7 +76,7 @@ async function startBot() {
                 // ==============================================================
                 // PENTING: GANTI DOMAIN DI BAWAH INI DENGAN WEB HOSTINGER ANDA
                 // ==============================================================
-                const response = await fetch('https://NAMA-DOMAIN-ANDA.com/webhook.php', {
+                const response = await fetch('https://sekolah.ponpesassaadah.com/webhook.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
