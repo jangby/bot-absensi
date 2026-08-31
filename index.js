@@ -71,21 +71,18 @@ async function startBot() {
         const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text || msg.message.imageMessage?.caption || "";
         const lowerText = textMessage.toLowerCase();
 
-        // ==========================================
-        // FITUR SMART WA ASSISTANT (NLP SEDERHANA)
-        // ==========================================
-        if (lowerText.startsWith('keluar ') || lowerText.startsWith('masuk ') || lowerText.startsWith('tautkan ')) {
-            
-            console.log(`[INFO] Menangkap Perintah dari ${senderNumber} -> Mengirim ke PHP...`);
+        // Deteksi jika pesan mengandung kode verifikasi
+        if (lowerText.includes('link-akun-')) {
+            console.log(`[INFO] Permintaan menautkan akun dari ${senderNumber} -> Mengirim ke PHP...`);
             await sock.sendPresenceUpdate('composing', msg.key.remoteJid);
 
             try {
-                // PASTIKAN URL INI BENAR
-                const response = await fetch('https://kas.jagokas.online/api_webhook.php', {
+                // GANTI DENGAN URL WEB HOSTINGER ANDA (Contoh: https://sekolah-anda.com/webhook.php)
+                const response = await fetch('https://sekolah.ponpesassaadah.com/webhook.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        phone: senderNumber, // Akan berisi nomor WA bersih atau angka LID murni
+                        phone: senderNumber, 
                         pesan_lengkap: textMessage
                     })
                 });
@@ -98,7 +95,7 @@ async function startBot() {
 
             } catch (error) {
                 console.error("[ERROR Webhook] Gagal menghubungi PHP Hostinger:", error.message);
-                await sock.sendMessage(msg.key.remoteJid, { text: "❌ Maaf, server web sedang gangguan. Transaksi gagal dicatat." });
+                await sock.sendMessage(msg.key.remoteJid, { text: "❌ Maaf, sistem gagal menautkan akun. Pastikan web sedang online." });
             }
         }
     });
